@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quiz Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="questions.js"></script>
     <style>
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --gray: #e2e8f0; --dark: #0f172a; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f8fafc; color: var(--dark); -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f8fafc; color: var(--dark); -webkit-tap-highlight-color: transparent; position: relative; min-height: 100vh; overflow-x: hidden; }
 
         /* Header */
         .header { 
@@ -41,7 +42,7 @@
         .nav-dot.current { border: 2px solid black; background: #f1f5f9; }
 
         /* Quiz UI */
-        .container { padding: 16px; max-width: 600px; margin: auto; }
+        .container { padding: 16px; max-width: 600px; margin: auto; position: relative; z-index: 10; }
         .question-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--gray); }
         .option-item { padding: 14px; margin: 10px 0; border: 2px solid var(--gray); border-radius: 10px; display: flex; align-items: center; cursor: pointer; transition: 0.1s; }
         .option-item input { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
@@ -71,9 +72,33 @@
         .q-header-review { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
         .q-text-review { font-weight: bold; display: block; flex: 1; margin-right: 10px; }
         .status-badge { font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
+
+        /* Watermark Styles */
+        .watermark-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            z-index: 0;
+            pointer-events: none;
+            width: 100%;
+            text-align: center;
+        }
+        .watermark-text {
+            font-size: 12vw;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.04); 
+            text-transform: uppercase;
+            white-space: nowrap;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
+
+    <div class="watermark-container">
+        <div class="watermark-text">ScoreCorrectPSC</div>
+    </div>
 
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
@@ -126,13 +151,11 @@
 
     <div id="review-screen" class="container">
         <h2 style="text-align: center; color: var(--primary); margin-top: 10px;">Your Responses</h2>
-        
         <div style="text-align: center; margin-bottom: 15px; font-size: 0.8rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
             <span style="color:var(--success); font-weight:bold;">✔ Correct</span>
             <span style="color:var(--danger); font-weight:bold;">✖ Wrong</span>
             <span style="color:var(--warning); font-weight:bold;">⚠ Unattempted</span>
         </div>
-
         <div id="review-list"></div>
         <div style="margin-top: 20px;">
             <button class="btn-prev" style="width:100%" onclick="location.reload()">Close / Exit</button>
@@ -140,22 +163,47 @@
     </div>
 
     <script>
-        // === CHANGE YOUR TIMER HERE ===
-        const QUIZ_TIME_MINUTES = 30; 
-        // ==============================
+        // --- EDITABLE SECTION ---
+        const QUIZ_UNIQUE_ID = "KERALA_POLICE_ACT_001"; // Change this for new topics
+        const ALLOW_MULTIPLE_ENTRIES = true; // Toggle to true to disable 24h block
+        const QUIZ_TIME_MINUTES = 50; // CHANGE YOUR TIMER HERE
+        // ------------------------
 
         let currentIdx = 0;
         let userAnswers = new Array(quizQuestions.length).fill(null);
         let timeLeft = QUIZ_TIME_MINUTES * 60;
         let timerInterval;
 
-        // Automatically update HTML timer text to match your chosen time
-        document.getElementById('timer').innerText = QUIZ_TIME_MINUTES + ':00';
+        const FORM_ID = "1FAIpQLSdCkXL5LBwnm_n74ClLFsC4k4QVWJXrm7CfzzkhKmWe_KIKyg"; 
+        const ENTRY_NAME = "entry.1501316275";
+        const ENTRY_SCORE = "entry.1274011120";
+        const ENTRY_TIME = "entry.601190537";
 
-        const FORM_ID = "1FAIpQLSfdc6KygQ100hICyXkaJYIWVJ7UxKYUw4aV22smmT3nRWCu3g"; 
-        const ENTRY_NAME = "entry.1088098272";
-        const ENTRY_SCORE = "entry.1899459571";
-        const ENTRY_TIME = "entry.1956296565";
+        window.onload = function() {
+            const savedData = localStorage.getItem('quiz_progress_' + QUIZ_UNIQUE_ID);
+            if(savedData) {
+                const data = JSON.parse(savedData);
+                // CUSTOM MALAYALAM RESUME DIALOGUE
+                if(confirm("Quiz ൻ്റെ തുടർച്ച ചെയ്യണോ അതോ ആദ്യം മുതൽ ചെയ്യാണോ 😊 \n\n (OK = ബാക്കി ചെയ്യാം 🤝 | Cancel = ആദ്യം മുതൽ 🤗)")) {
+                    document.getElementById('userName').value = data.name;
+                    userAnswers = data.answers;
+                    timeLeft = data.time;
+                    currentIdx = data.idx;
+                    document.getElementById('login-screen').classList.remove('active');
+                    document.getElementById('quiz-screen').classList.add('active');
+                    loadQuestion();
+                    startTimer();
+                } else {
+                    localStorage.removeItem('quiz_progress_' + QUIZ_UNIQUE_ID);
+                }
+            }
+        }
+
+        function saveProgress() {
+            const name = document.getElementById('userName').value;
+            const data = { name: name, answers: userAnswers, time: timeLeft, idx: currentIdx };
+            localStorage.setItem('quiz_progress_' + QUIZ_UNIQUE_ID, JSON.stringify(data));
+        }
 
         function toggleMenu() {
             const drawer = document.getElementById('nav-drawer');
@@ -173,19 +221,44 @@
         function startQuiz() {
             const name = document.getElementById('userName').value.trim();
             if(!name) return alert("Please enter your name");
+
+            // 24H BLOCK WITH AUTOMATIC EXPIRATION
+            if (!ALLOW_MULTIPLE_ENTRIES) {
+                const subKey = 'quiz_sub_' + QUIZ_UNIQUE_ID;
+                const lastSub = localStorage.getItem(subKey);
+                if (lastSub) {
+                    const diff = Date.now() - parseInt(lastSub);
+                    if (diff < 24 * 60 * 60 * 1000) {
+                        return alert("റാങ്ക് ലിസ്റ്റ് ഉണ്ടാക്കാൻ ഉള്ളതിനാൽ ഒരാൾ ഒരു പ്രാവശ്യം മാത്രമേ അറ്റൻഡ് ചെയ്യാൻ പാടുള്ളൂ, 24hr കഴിഞ്ഞാൽ എത്ര പ്രാവശ്യം വേണമെങ്കിലും അറ്റൻഡ് ചെയ്ത് നോക്കാം 🥰, Please Wait.");
+                    } else {
+                        localStorage.removeItem(subKey);
+                    }
+                }
+            }
+
             document.getElementById('login-screen').classList.remove('active');
             document.getElementById('quiz-screen').classList.add('active');
             loadQuestion();
             startTimer();
+            saveProgress();
         }
 
         function startTimer() {
+            if(timerInterval) clearInterval(timerInterval);
+            
+            // Fix applied here: Immediately update timer display so it doesn't flash "30:00" on resume.
+            let mins = Math.floor(timeLeft / 60);
+            let secs = timeLeft % 60;
+            document.getElementById('timer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
             timerInterval = setInterval(() => {
                 timeLeft--;
-                let mins = Math.floor(timeLeft / 60);
-                let secs = timeLeft % 60;
-                document.getElementById('timer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-                if(timeLeft <= 0) finishQuiz();
+                let m = Math.floor(timeLeft / 60);
+                let s = timeLeft % 60;
+                document.getElementById('timer').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+                
+                if(timeLeft % 5 === 0) saveProgress(); 
+                if(timeLeft <= 0) finishQuiz(); // AUTO-SUBMIT ON TIME REACHED
             }, 1000);
         }
 
@@ -218,19 +291,23 @@
             document.getElementById('submitBtn').style.display = currentIdx === quizQuestions.length - 1 ? 'block' : 'none';
         }
 
-        function saveAnswer(val) { userAnswers[currentIdx] = val; }
+        function saveAnswer(val) { userAnswers[currentIdx] = val; saveProgress(); }
 
         function changeQuestion(step) {
             currentIdx += step;
             loadQuestion();
             window.scrollTo(0,0);
+            saveProgress();
         }
 
         function finishQuiz() {
             if(timeLeft > 0 && !confirm("Finish and submit your answers?")) return;
             clearInterval(timerInterval);
+            localStorage.removeItem('quiz_progress_' + QUIZ_UNIQUE_ID);
             
-            // Score Calculation
+            // SAVE CURRENT TIME FOR 24H BLOCK
+            localStorage.setItem('quiz_sub_' + QUIZ_UNIQUE_ID, Date.now().toString());
+
             let score = 0;
             userAnswers.forEach((ans, i) => {
                 if(ans === null) return;
@@ -238,20 +315,21 @@
                 else { score -= (1/3); }
             });
             const finalScore = score.toFixed(2);
-            
             const name = document.getElementById('userName').value;
             const timeTaken = Math.floor((QUIZ_TIME_MINUTES * 60 - timeLeft) / 60) + " mins";
 
-            // Send data
             const formUrl = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse?${ENTRY_NAME}=${encodeURIComponent(name)}&${ENTRY_SCORE}=${finalScore}&${ENTRY_TIME}=${timeTaken}&submit=Submit`;
             fetch(formUrl, { mode: 'no-cors' });
             
             document.getElementById('quiz-screen').classList.remove('active');
             document.getElementById('final-screen').classList.add('active');
+            launchConfetti();
 
+            // FINAL SCREEN NOW INCLUDES THE SCORE
             document.getElementById('final-msg-container').innerHTML = `
                 <h2 style="margin: 0 0 20px 0; color: var(--dark);">Hi ${name}</h2>
                 <p style="color: #475569; font-size: 1.1rem; line-height: 1.6; margin-bottom: 30px;">
+                    Your Score: <strong style="color:var(--primary); font-size:1.5rem;">${finalScore}</strong><br>
                     Your mark has been submitted.<br>
                     <strong>Ranklist will be soon available.</strong>
                 </p>
@@ -259,61 +337,34 @@
             `;
         }
 
+        function launchConfetti() {
+            var duration = 5 * 1000;
+            var animationEnd = Date.now() + duration;
+            var interval = setInterval(function() {
+                if (Date.now() > animationEnd) return clearInterval(interval);
+                confetti({ particleCount: 50, startVelocity: 30, spread: 360, origin: { x: Math.random(), y: Math.random() - 0.2 } });
+            }, 250);
+        }
+
         function showReview() {
             document.getElementById('final-screen').classList.remove('active');
             document.getElementById('review-screen').classList.add('active');
-            
             const list = document.getElementById('review-list');
             list.innerHTML = '';
-
             quizQuestions.forEach((q, i) => {
                 const userAns = userAnswers[i];
                 const isCorrect = userAns === q.correct;
                 const isUnattempted = userAns === null;
-
-                // Determine Badge Text & Color
-                let badgeText = "";
-                let badgeColor = "";
-
-                if(isUnattempted) {
-                    badgeText = "⚠ Unattempted";
-                    badgeColor = "color: var(--warning); background: #fffbeb; border: 1px solid var(--warning);";
-                } else if(isCorrect) {
-                    badgeText = "✔ Correct";
-                    badgeColor = "color: var(--success); background: #dcfce7; border: 1px solid var(--success);";
-                } else {
-                    badgeText = "✖ Wrong";
-                    badgeColor = "color: var(--danger); background: #fee2e2; border: 1px solid var(--danger);";
-                }
-
-                let cardHtml = `<div class="review-card">
-                    <div class="q-header-review">
-                        <span class="q-text-review">Q${i+1}: ${q.question}</span>
-                        <span class="status-badge" style="${badgeColor}">${badgeText}</span>
-                    </div>`;
-                
+                let badgeText = isUnattempted ? "⚠ Unattempted" : (isCorrect ? "✔ Correct" : "✖ Wrong");
+                let badgeColor = isUnattempted ? "color: var(--warning); background: #fffbeb; border: 1px solid var(--warning);" : (isCorrect ? "color: var(--success); background: #dcfce7; border: 1px solid var(--success);" : "color: var(--danger); background: #fee2e2; border: 1px solid var(--danger);");
+                let cardHtml = `<div class="review-card"><div class="q-header-review"><span class="q-text-review">Q${i+1}: ${q.question}</span><span class="status-badge" style="${badgeColor}">${badgeText}</span></div>`;
                 q.options.forEach((opt, optIdx) => {
-                    const isSelected = userAns === optIdx;
-                    const isActualCorrect = q.correct === optIdx;
-                    
-                    let styleClass = 'review-option';
-                    let icon = '○ ';
-
-                    if (isActualCorrect) {
-                        styleClass += ' review-correct'; // Always show Correct Green
-                        icon = '✔ ';
-                    } else if (isSelected) {
-                        styleClass += ' review-wrong'; // Show Wrong Red
-                        icon = '✖ ';
-                    }
-                    
-                    cardHtml += `<div class="${styleClass}">${icon} ${opt}</div>`;
+                    let styleClass = 'review-option' + (q.correct === optIdx ? ' review-correct' : (userAns === optIdx ? ' review-wrong' : ''));
+                    cardHtml += `<div class="${styleClass}">${opt}</div>`;
                 });
-
                 cardHtml += `</div>`;
                 list.innerHTML += cardHtml;
             });
-            
             window.scrollTo(0,0);
         }
     </script>
