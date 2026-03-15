@@ -101,7 +101,7 @@
         <div class="header">
             <span class="quiz-title">KERALA POLICE ACT</span>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="timer" id="timer">40:00</span>
+                <span class="timer" id="timer">--:--</span>
                 <button class="btn-menu" onclick="toggleMenu()">☰</button>
             </div>
         </div>
@@ -140,10 +140,17 @@
     </div>
 
     <script>
+        // === CHANGE YOUR TIMER HERE ===
+        const QUIZ_TIME_MINUTES = 30; 
+        // ==============================
+
         let currentIdx = 0;
         let userAnswers = new Array(quizQuestions.length).fill(null);
-        let timeLeft = 30 * 60;
+        let timeLeft = QUIZ_TIME_MINUTES * 60;
         let timerInterval;
+
+        // Automatically update HTML timer text to match your chosen time
+        document.getElementById('timer').innerText = QUIZ_TIME_MINUTES + ':00';
 
         const FORM_ID = "1FAIpQLSfdc6KygQ100hICyXkaJYIWVJ7UxKYUw4aV22smmT3nRWCu3g"; 
         const ENTRY_NAME = "entry.1088098272";
@@ -233,7 +240,7 @@
             const finalScore = score.toFixed(2);
             
             const name = document.getElementById('userName').value;
-            const timeTaken = Math.floor((30 * 60 - timeLeft) / 60) + " mins";
+            const timeTaken = Math.floor((QUIZ_TIME_MINUTES * 60 - timeLeft) / 60) + " mins";
 
             // Send data
             const formUrl = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse?${ENTRY_NAME}=${encodeURIComponent(name)}&${ENTRY_SCORE}=${finalScore}&${ENTRY_TIME}=${timeTaken}&submit=Submit`;
